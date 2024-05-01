@@ -11,7 +11,7 @@ type InputOptions = {
 };
 
 const importSalzburgAg = new Command("import-salzburg-ag")
-    .description("Check for every non archived GitLab Projekt, if it is still online")
+    .description("Import Salzburg AG Data into Database")
     .option("--target <target>", "day/night")
     .option("--file <file>", "path to csv file")
     .action(async (options: InputOptions) => {
