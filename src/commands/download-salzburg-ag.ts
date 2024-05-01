@@ -33,7 +33,10 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
         };
         let driver;
         if (options.headless) {
-            driver = new Builder().forBrowser("chrome").setChromeOptions(new chrome.Options().addArguments("--headless").windowSize(screen)).build();
+            driver = new Builder()
+                .forBrowser("chrome")
+                .setChromeOptions(new chrome.Options().addArguments("--remote-debugging-pipeline").addArguments("--headless").windowSize(screen))
+                .build();
         } else {
             driver = new Builder().forBrowser("chrome").setChromeOptions(new chrome.Options().windowSize(screen)).build();
         }
