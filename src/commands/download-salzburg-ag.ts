@@ -1,16 +1,18 @@
 import { Command } from "commander";
-import { Browser, Builder, By, Key, until } from "selenium-webdriver";
+import { Builder, By, Key, until } from "selenium-webdriver";
+import chrome from "selenium-webdriver/chrome";
 // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-var-requires
 require("dotenv").config();
 
 type InputOptions = {
     target: string;
-    file: string;
+    headless: boolean;
 };
 
 const downloadSalzburgAg = new Command("download-salzburg-ag")
     .description("Download Salzburg AG Data")
     .option("--target <target>", "day/night")
+    .option("--headless", "activate headless mode")
     .action(async (options: InputOptions) => {
         let targetElement = "";
         if (options.target !== "day" && options.target !== "night") {
@@ -25,28 +27,42 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             process.exit(1);
         }
         console.log("Download Salzburg AG Data");
-        const driver = await new Builder().forBrowser(Browser.FIREFOX).build();
+        const screen = {
+            width: 1920,
+            height: 1080,
+        };
+        let driver;
+        if (options.headless) {
+            driver = new Builder().forBrowser("chrome").setChromeOptions(new chrome.Options().addArguments("--headless").windowSize(screen)).build();
+        } else {
+            driver = new Builder().forBrowser("chrome").setChromeOptions(new chrome.Options().windowSize(screen)).build();
+        }
         const sbgUsername = process.env.SBG_AG_USERNAME;
         const sbgPassword = process.env.SBG_AG_PASSWORD;
         try {
+            console.log("Open Salzburg AG Portal");
             await driver.get("https://portal.salzburgnetz.at/content/nepo/de/anlagen/anlage");
             await driver.wait(until.elementLocated(By.id("signInName")), 10000);
             await driver.findElement(By.id("signInName")).sendKeys(String(sbgUsername));
             await driver.findElement(By.id("password")).sendKeys(String(sbgPassword), Key.RETURN);
+            console.log("Close Cookie Banner");
             await driver.wait(until.elementLocated(By.id("uc-btn-deny-banner")), 10000);
             await driver.findElement(By.id("uc-btn-deny-banner")).click();
+            console.log("Navigate to correct Page");
             await driver.get("https://portal.salzburgnetz.at/content/nepo/de/anlagen");
             await driver.wait(until.elementTextContains(await driver.findElement(By.tagName("body")), targetElement), 10000);
             const element = await driver.findElement(By.xpath(`//*[contains(text(), '${targetElement}')]`));
             await element.click();
 
             // Switch to Viertelstunde
+            console.log("Switch to Viertelstunde");
             await driver.wait(until.elementLocated(By.css("[data-cy='st-typeSelector']")), 10000);
             const selectElement = await driver.findElement(By.css("[data-cy='st-typeSelector']"));
             const option = await selectElement.findElement(By.css(`option[value="1"]`));
             await option.click();
 
             // Switch to all data
+            console.log("Switch to all data");
             await driver.wait(until.elementLocated(By.css("[data-cy='st-selector']")), 10000);
             const selectElement2 = await driver.findElement(By.css("[data-cy='st-selector']"));
             const option2 = await selectElement2.findElement(By.css(`option[value="5: 0"]`));
@@ -54,6 +70,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
 
             await driver.sleep(5000);
 
+            console.log("Download CSV");
             await driver.wait(until.elementLocated(By.className("highcharts-button-symbol")), 10000);
             const clickDownloadMenu = await driver.findElement(By.className("highcharts-button-symbol"));
             await clickDownloadMenu.click();
