@@ -78,18 +78,22 @@ const importSalzburgAg = new Command("import-salzburg-ag")
                             return Promise.resolve(); // Return a resolved promise for existing entries
                         } else {
                             return new Promise((resolve, reject) => {
-                                dbConnection.query(
-                                    `INSERT INTO ${dbTable} (date, consumption) VALUES (to_timestamp($1), $2)`,
-                                    [Date.parse(result.date) / 1000, Number(result.consumption)],
-                                    (err, res) => {
-                                        if (err) {
-                                            console.log(err);
-                                            reject(err);
-                                        } else {
-                                            resolve(res);
-                                        }
-                                    },
-                                );
+                                try {
+                                    dbConnection.query(
+                                        `INSERT INTO ${dbTable} (date, consumption) VALUES (to_timestamp($1), $2)`,
+                                        [Date.parse(result.date) / 1000, Number(result.consumption)],
+                                        (err, res) => {
+                                            if (err) {
+                                                console.log(err);
+                                                reject(err);
+                                            } else {
+                                                resolve(res);
+                                            }
+                                        },
+                                    );
+                                } catch (err) {
+                                    console.log(err);
+                                }
                             });
                         }
                     });
