@@ -72,6 +72,9 @@ const importSalzburgAg = new Command("import-salzburg-ag")
             .on("end", () => {
                 dbConnection.query(`SELECT date FROM ${dbTable}`, async (err, res) => {
                     const promises = results.map((result) => {
+                        setTimeout(() => {
+                            console.log("Wait for 50ms");
+                        }, 50);
                         console.log(`Inserting ${result.date}`);
                         if (res && res.rows && res.rows.find((row) => Date.parse(row.date) === Date.parse(result.date))) {
                             console.log("Already exists");
@@ -91,9 +94,6 @@ const importSalzburgAg = new Command("import-salzburg-ag")
                                             }
                                         },
                                     );
-                                    setTimeout(() => {
-                                        console.log("Wait for 50ms");
-                                    }, 50);
                                 } catch (err) {
                                     console.log(err);
                                 }
