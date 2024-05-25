@@ -91,6 +91,9 @@ const importSalzburgAg = new Command("import-salzburg-ag")
                                             }
                                         },
                                     );
+                                    setTimeout(() => {
+                                        console.log("Wait for 50ms");
+                                    }, 50);
                                 } catch (err) {
                                     console.log(err);
                                 }
