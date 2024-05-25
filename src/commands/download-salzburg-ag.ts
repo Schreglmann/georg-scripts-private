@@ -64,6 +64,8 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             const option = await selectElement.findElement(By.css(`option[value="1"]`));
             await option.click();
 
+            await driver.sleep(3000);
+
             // Switch to all data
             console.log("Switch to all data");
             await driver.wait(until.elementLocated(By.css("[data-cy='st-selector']")), 10000);
@@ -71,7 +73,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             const option2 = await selectElement2.findElement(By.css(`option[value="5: 0"]`));
             await option2.click();
 
-            await driver.sleep(5000);
+            await driver.sleep(10000);
 
             console.log("Download CSV");
             await driver.wait(until.elementLocated(By.className("highcharts-button-symbol")), 10000);
