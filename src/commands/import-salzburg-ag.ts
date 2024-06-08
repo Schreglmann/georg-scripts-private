@@ -72,15 +72,14 @@ const importSalzburgAg = new Command("import-salzburg-ag")
             .on("end", async () => {
                 dbConnection.query(`SELECT date FROM ${dbTable}`, async (err, res) => {
                     for (const result of results) {
-                        await sleep(500);
-
                         const parsedDate = stringToDate(result.date);
 
-                        console.log(`Inserting ${parsedDate}`);
+                        console.log(`Inserting ${new Date(parsedDate).toISOString()}`);
                         if (res && res.rows && res.rows.find((row) => Date.parse(row.date) === parsedDate)) {
                             console.log("Already exists");
                             continue; // Skip to the next iteration for existing entries
                         } else {
+                            await sleep(50);
                             try {
                                 await new Promise((resolve, reject) => {
                                     dbConnection.query(
