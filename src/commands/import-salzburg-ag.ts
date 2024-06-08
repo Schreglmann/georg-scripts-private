@@ -47,8 +47,8 @@ const importSalzburgAg = new Command("import-salzburg-ag")
         console.log("Parse CSV File");
         const data = fs.readFileSync(csvPath, "utf8");
         let result = data
-            .replace(/"Restverbrauch[a-zA-Z0-9 (),]*"/g, "consumption")
-            .replace(/"Datum und Uhrzeit"/g, "date")
+            .replace(/"Restverbrauch \(kWh\)"/g, "consumption")
+            .replace(/"Datum"/g, "date")
             .replace(/"Status"/g, "status")
             .replace(/,/g, ".");
 
@@ -69,20 +69,23 @@ const importSalzburgAg = new Command("import-salzburg-ag")
         fs.createReadStream("/tmp/Lastprofilwerte_parsed.csv", "utf8")
             .pipe(csv({ separator: ";" }))
             .on("data", (data) => results.push(data))
-            .on("end", () => {
+            .on("end", async () => {
                 dbConnection.query(`SELECT date FROM ${dbTable}`, async (err, res) => {
-                    const promises = results.map(async (result) => {
+                    for (const result of results) {
                         await sleep(500);
-                        console.log(`Inserting ${result.date}`);
-                        if (res && res.rows && res.rows.find((row) => Date.parse(row.date) === Date.parse(result.date))) {
+
+                        const parsedDate = stringToDate(result.date);
+
+                        console.log(`Inserting ${parsedDate}`);
+                        if (res && res.rows && res.rows.find((row) => Date.parse(row.date) === parsedDate)) {
                             console.log("Already exists");
-                            return Promise.resolve(); // Return a resolved promise for existing entries
+                            continue; // Skip to the next iteration for existing entries
                         } else {
-                            return new Promise((resolve, reject) => {
-                                try {
+                            try {
+                                await new Promise((resolve, reject) => {
                                     dbConnection.query(
                                         `INSERT INTO ${dbTable} (date, consumption) VALUES (to_timestamp($1), $2)`,
-                                        [Date.parse(result.date) / 1000, Number(result.consumption)],
+                                        [parsedDate / 1000, Number(result.consumption)],
                                         (err, res) => {
                                             if (err) {
                                                 console.log(err);
@@ -92,15 +95,15 @@ const importSalzburgAg = new Command("import-salzburg-ag")
                                             }
                                         },
                                     );
-                                } catch (err) {
-                                    console.log(err);
-                                }
-                            });
+                                });
+                            } catch (err) {
+                                console.log(err);
+                            }
                         }
-                    });
+                    }
 
                     // Wait for all queries to complete
-                    await Promise.all(promises);
+                    // await Promise.all(promises);
 
                     // Delete the file
                     fs.unlinkSync("/tmp/Lastprofilwerte_parsed.csv");
@@ -117,8 +120,22 @@ const importSalzburgAg = new Command("import-salzburg-ag")
             });
     });
 
-    const sleep = async (ms: number) => {
-        await new Promise((resolve) => setTimeout(resolve, ms));
-    }
+const sleep = async (ms: number) => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+const stringToDate = (dateString: string) => {
+    const parts = dateString.split(" ");
+    const dateParts = parts[0].split(".");
+    const timeParts = parts[1].split(":");
+    return new Date(
+        Number(dateParts[2]),
+        Number(dateParts[1]) - 1,
+        Number(dateParts[0]),
+        Number(timeParts[0]),
+        Number(timeParts[1]),
+        Number(timeParts[2]),
+    ).getTime();
+};
 
 export { importSalzburgAg };

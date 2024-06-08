@@ -61,8 +61,12 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             console.log("Switch to Viertelstunde");
             await driver.wait(until.elementLocated(By.css("[data-cy='st-typeSelector']")), 10000);
             const selectElement = await driver.findElement(By.css("[data-cy='st-typeSelector']"));
-            const option = await selectElement.findElement(By.css(`option[value="1"]`));
-            await option.click();
+            // const option = await selectElement.findElement(By.css(`option[value="1"]`));
+            await driver.executeScript("arguments[0].value = '1';", selectElement);
+            console.log("4");
+            // await driver.sleep(100000);
+            // await option.click();
+            console.log("5");
 
             await driver.sleep(3000);
 
@@ -70,8 +74,9 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             console.log("Switch to all data");
             await driver.wait(until.elementLocated(By.css("[data-cy='st-selector']")), 10000);
             const selectElement2 = await driver.findElement(By.css("[data-cy='st-selector']"));
-            const option2 = await selectElement2.findElement(By.css(`option[value="5: 0"]`));
-            await option2.click();
+            // const option2 = await selectElement2.findElement(By.css(`option[value="5: 0"]`));
+            // await option2.click();
+            await driver.executeScript("arguments[0].value = '5: 0';", selectElement2);
 
             await driver.sleep(10000);
 
