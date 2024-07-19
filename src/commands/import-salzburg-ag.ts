@@ -72,32 +72,36 @@ const importSalzburgAg = new Command("import-salzburg-ag")
             .on("end", async () => {
                 dbConnection.query(`SELECT date FROM ${dbTable}`, async (err, res) => {
                     for (const result of results) {
-                        const parsedDate = stringToDate(result.date);
+                        try {
+                            const parsedDate = stringToDate(result.date);
 
-                        console.log(`Inserting ${new Date(parsedDate).toISOString()}`);
-                        if (res && res.rows && res.rows.find((row) => Date.parse(row.date) === parsedDate)) {
-                            console.log("Already exists");
-                            continue; // Skip to the next iteration for existing entries
-                        } else {
-                            await sleep(50);
-                            try {
-                                await new Promise((resolve, reject) => {
-                                    dbConnection.query(
-                                        `INSERT INTO ${dbTable} (date, consumption) VALUES (to_timestamp($1), $2)`,
-                                        [parsedDate / 1000, Number(result.consumption)],
-                                        (err, res) => {
-                                            if (err) {
-                                                console.log(err);
-                                                reject(err);
-                                            } else {
-                                                resolve(res);
-                                            }
-                                        },
-                                    );
-                                });
-                            } catch (err) {
-                                console.log(err);
+                            console.log(`Inserting ${new Date(parsedDate).toISOString()}`);
+                            if (res && res.rows && res.rows.find((row) => Date.parse(row.date) === parsedDate)) {
+                                console.log("Already exists");
+                                continue; // Skip to the next iteration for existing entries
+                            } else {
+                                await sleep(50);
+                                try {
+                                    await new Promise((resolve, reject) => {
+                                        dbConnection.query(
+                                            `INSERT INTO ${dbTable} (date, consumption) VALUES (to_timestamp($1), $2)`,
+                                            [parsedDate / 1000, Number(result.consumption)],
+                                            (err, res) => {
+                                                if (err) {
+                                                    console.log(err);
+                                                    reject(err);
+                                                } else {
+                                                    resolve(res);
+                                                }
+                                            },
+                                        );
+                                    });
+                                } catch (err) {
+                                    console.log(err);
+                                }
                             }
+                        } catch (err) {
+                            console.log(err);
                         }
                     }
 
