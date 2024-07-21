@@ -1,4 +1,6 @@
+import axios from "axios";
 import { Command } from "commander";
+import pg from "pg";
 import { Builder, By, Key, until } from "selenium-webdriver";
 import chrome from "selenium-webdriver/chrome";
 // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-var-requires
@@ -9,23 +11,64 @@ type InputOptions = {
     headless: boolean;
 };
 
+const downloadJson = async (access_token: string, dayOrNight: string) => {
+    const data = {
+        IV_ANLAGE: dayOrNight === "day" ? process.env.DAY_ANLAGE : process.env.NIGHT_ANLAGE,
+        IV_AB: "2024-07-10",
+        IV_BIS: new Date().toISOString().split("T")[0],
+        IV_DAILY: "V",
+        GPNR: process.env.GPNR,
+    };
+
+    console.log("Target: ", dayOrNight);
+
+    const config = {
+        method: "post",
+        url: "https://portal.salzburgnetz.at/backend/equipments/profiles",
+        headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:129.0) Gecko/20100101 Firefox/129.0",
+            Accept: "application/json",
+            "Accept-Language": "de,en-US;q=0.7,en;q=0.3",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "x-nekupo-target": "backend_cosmos",
+            Authorization: `Bearer ${access_token}`,
+            "Content-Type": "application/json",
+            Origin: "https://portal.salzburgnetz.at",
+            Connection: "keep-alive",
+            Referer: "https://portal.salzburgnetz.at/content/nepo/de/anlagen/anlage",
+            Cookie: "",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-origin",
+            Pragma: "no-cache",
+            "Cache-Control": "no-cache",
+        },
+        data: data,
+    };
+
+    const resp = await axios(config);
+    return resp.data;
+};
+
 const downloadSalzburgAg = new Command("download-salzburg-ag")
     .description("Download Salzburg AG Data")
     .option("--target <target>", "day/night")
     .option("--headless", "activate headless mode")
     .action(async (options: InputOptions) => {
-        let targetElement = "";
         if (options.target !== "day" && options.target !== "night") {
             console.log("Invalid target");
-            process.exit(1);
-        } else if (options.target == "day") {
-            targetElement = "Systemnutzung NE 7 - Grundpreispauschale";
-        } else if (options.target == "night") {
-            targetElement = "Systemnutzung Strom NE 7 - Heißwasser NT";
-        } else {
-            console.log("Invalid target");
-            process.exit(1);
+            return;
         }
+        const { Client } = pg;
+        const dbConnection = new Client({
+            user: process.env.PG_USERNAME,
+            host: process.env.PG_HOST,
+            password: process.env.PG_PASSWORD,
+            port: Number(process.env.PG_PORT),
+            database: process.env.PG_DATABASE,
+            ssl: false,
+        });
+
         console.log("Download Salzburg AG Data");
         const screen = {
             width: 1920,
@@ -48,50 +91,70 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             await driver.wait(until.elementLocated(By.id("signInName")), 10000);
             await driver.findElement(By.id("signInName")).sendKeys(String(sbgUsername));
             await driver.findElement(By.id("password")).sendKeys(String(sbgPassword), Key.RETURN);
-            console.log("Close Cookie Banner");
+            console.log("Wait for Cookie Banner to appear (for the login to be finished)");
             await driver.wait(until.elementLocated(By.id("uc-btn-deny-banner")), 10000);
-            await driver.findElement(By.id("uc-btn-deny-banner")).click();
-            console.log("Navigate to correct Page");
-            await driver.get("https://portal.salzburgnetz.at/content/nepo/de/anlagen");
-            await driver.wait(until.elementTextContains(await driver.findElement(By.tagName("body")), targetElement), 10000);
-            const element = await driver.findElement(By.xpath(`//*[contains(text(), '${targetElement}')]`));
-            await element.click();
 
-            // Switch to Viertelstunde
-            console.log("Switch to Viertelstunde");
-            await driver.wait(until.elementLocated(By.css("[data-cy='st-typeSelector']")), 10000);
-            const selectElement = await driver.findElement(By.css("[data-cy='st-typeSelector']"));
-            // const option = await selectElement.findElement(By.css(`option[value="1"]`));
-            await driver.executeScript("arguments[0].value = '1';", selectElement);
-            console.log("4");
-            // await driver.sleep(100000);
-            // await option.click();
-            console.log("5");
+            // After logging in and any other actions
+            console.log("Reading session storage");
+            const sessionStorageData: any = await driver.executeScript("return window.sessionStorage");
 
-            await driver.sleep(3000);
+            // Download JSON
+            const jsonResponse = await downloadJson(sessionStorageData.access_token, options.target);
 
-            // Switch to all data
-            console.log("Switch to all data");
-            await driver.wait(until.elementLocated(By.css("[data-cy='st-selector']")), 10000);
-            const selectElement2 = await driver.findElement(By.css("[data-cy='st-selector']"));
-            // const option2 = await selectElement2.findElement(By.css(`option[value="5: 0"]`));
-            // await option2.click();
-            await driver.executeScript("arguments[0].value = '5: 0';", selectElement2);
+            await dbConnection.connect();
 
-            await driver.sleep(10000);
-
-            console.log("Download CSV");
-            await driver.wait(until.elementLocated(By.className("highcharts-button-symbol")), 10000);
-            const clickDownloadMenu = await driver.findElement(By.className("highcharts-button-symbol"));
-            await clickDownloadMenu.click();
-
-            await driver.wait(until.elementLocated(By.xpath("//li[contains(text(), 'Download CSV')]")), 10000);
-            const downloadCSV = await driver.findElement(By.xpath("//li[contains(text(), 'Download CSV')]"));
-            await downloadCSV.click();
-
-            await driver.sleep(1000);
+            for (const entry of jsonResponse) {
+                const dayDatesCount = await dbConnection.query(
+                    `SELECT date FROM ${
+                        options.target == "day" ? "data_day" : "data_night"
+                    } WHERE date BETWEEN $1::date AND $1::date + '1 day'::interval - '1 second'::interval`,
+                    [entry.DATE],
+                );
+                if (dayDatesCount.rowCount == 96) {
+                    console.log(`Skipping Day ${entry.DATE}`);
+                    continue;
+                } else {
+                    console.log(`Preparing Day ${entry.DATE}`);
+                }
+                const dbQueries = [];
+                for (const data of entry.DAILY_VALUES) {
+                    if (!data.PROF_TIME) {
+                        console.log(`Time missing for ${data.PROF_DATE}`);
+                        continue;
+                    }
+                    const parsedDate = new Date(Date.parse(`${data.PROF_DATE}T${data.PROF_TIME}`));
+                    if (dayDatesCount.rows.find((row) => Date.parse(row.date) == parsedDate.valueOf())) {
+                        console.log(`Skipping ${data.PROF_DATE} ${data.PROF_TIME}`);
+                        continue;
+                    } else {
+                        console.log(`Preparing ${data.PROF_DATE} ${data.PROF_TIME}`);
+                        dbQueries.push(
+                            `INSERT INTO ${options.target == "day" ? "data_day" : "data_night"} (date, consumption) VALUES (to_timestamp(${
+                                parsedDate.valueOf() / 1000
+                            }), ${data.PROF_VALUE})`,
+                        );
+                    }
+                }
+                if (dbQueries.length == 0) {
+                    console.log(`No Entries for Day ${entry.DATE}`);
+                    continue;
+                }
+                console.log(`Inserting Data for Day ${entry.DATE} to Database`);
+                const allQueries = `${dbQueries.join(";")};`;
+                await dbConnection.query(allQueries);
+            }
+        } catch (error) {
+            console.error(error);
         } finally {
+            console.log("All Data inserted successfully");
             await driver.quit();
+            dbConnection.end((err) => {
+                if (err) {
+                    console.log("Error closing connection", err);
+                } else {
+                    console.log("Database connection closed successfully");
+                }
+            });
         }
     });
 
