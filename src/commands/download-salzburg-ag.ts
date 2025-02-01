@@ -14,7 +14,7 @@ type InputOptions = {
 const downloadJson = async (access_token: string, dayOrNight: string) => {
     const data = {
         IV_ANLAGE: dayOrNight === "day" ? process.env.DAY_ANLAGE : process.env.NIGHT_ANLAGE,
-        IV_AB: "2024-07-10",
+        IV_AB: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split("T")[0],
         IV_BIS: new Date().toISOString().split("T")[0],
         IV_DAILY: "V",
         GPNR: process.env.GPNR,
