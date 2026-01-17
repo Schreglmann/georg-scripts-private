@@ -14,18 +14,18 @@ mkdir -p /mnt/user/appdata/georg-cli
 Create `/mnt/user/appdata/georg-cli/.env`:
 ```env
 # Salzburg AG Credentials
-USERNAME=your_username
-PASSWORD=your_password
+SBG_AG_USERNAME=your_username
+SBG_AG_PASSWORD=your_password
 DAY_ANLAGE=your_day_anlage
 NIGHT_ANLAGE=your_night_anlage
 GPNR=your_gpnr
 
 # Database Configuration
-DB_HOST=your_db_host
-DB_PORT=5432
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-DB_NAME=your_db_name
+PG_HOST=your_db_host
+PG_PORT=5432
+PG_USERNAME=your_db_user
+PG_PASSWORD=your_db_password
+PG_DATABASE=your_db_name
 ```
 
 ### 3. Set Up User Script
@@ -49,16 +49,16 @@ source /mnt/user/appdata/georg-cli/.env
 
 # Download and import day data directly to database
 docker run --rm \
-  -e SBG_AG_USERNAME="$USERNAME" \
-  -e SBG_AG_PASSWORD="$PASSWORD" \
+  -e SBG_AG_USERNAME="$SBG_AG_USERNAME" \
+  -e SBG_AG_PASSWORD="$SBG_AG_PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \
   -e NIGHT_ANLAGE="$NIGHT_ANLAGE" \
   -e GPNR="$GPNR" \
-  -e PG_HOST="$DB_HOST" \
-  -e PG_PORT="$DB_PORT" \
-  -e PG_USERNAME="$DB_USER" \
-  -e PG_PASSWORD="$DB_PASSWORD" \
-  -e PG_DATABASE="$DB_NAME" \
+  -e PG_HOST="$PG_HOST" \
+  -e PG_PORT="$PG_PORT" \
+  -e PG_USERNAME="$PG_USERNAME" \
+  -e PG_PASSWORD="$PG_PASSWORD" \
+  -e PG_DATABASE="$PG_DATABASE" \
   ghcr.io/schreglmann/georg-scripts-private:latest download-salzburg-ag --target day --headless
 ```
 

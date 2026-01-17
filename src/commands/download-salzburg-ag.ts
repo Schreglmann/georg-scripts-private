@@ -101,13 +101,28 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
         }
         const sbgUsername = process.env.SBG_AG_USERNAME;
         const sbgPassword = process.env.SBG_AG_PASSWORD;
+
+        if (!sbgUsername || !sbgPassword) {
+            console.error("Error: SBG_AG_USERNAME or SBG_AG_PASSWORD environment variables are not set");
+            return;
+        }
+
         try {
             console.log("Open Salzburg AG Portal");
             await driver.get("https://portal.salzburgnetz.at/content/nepo/de/anlagen/anlage");
+            console.log("Waiting for login form...");
             await driver.wait(until.elementLocated(By.id("signInName")), 10000);
+            console.log("Entering credentials...");
             await driver.findElement(By.id("signInName")).sendKeys(String(sbgUsername));
             await driver.findElement(By.id("password")).sendKeys(String(sbgPassword), Key.RETURN);
-            await driver.wait(until.urlContains("/dashboard"), 20000);
+            console.log("Waiting for redirect to dashboard...");
+            try {
+                await driver.wait(until.urlContains("/dashboard"), 20000);
+            } catch (error) {
+                const currentUrl = await driver.getCurrentUrl();
+                console.error(`Login failed. Current URL: ${currentUrl}`);
+                throw error;
+            }
 
             // After logging in and any other actions
             console.log("Reading session storage");
@@ -184,13 +199,12 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
         } finally {
             console.log("All Data inserted successfully");
             await driver.quit();
-            dbConnection.end((err) => {
-                if (err) {
-                    console.log("Error closing connection", err);
-                } else {
-                    console.log("Database connection closed successfully");
-                }
-            });
+            try {
+                await dbConnection.end();
+                console.log("Database connection closed successfully");
+            } catch (err) {
+                console.log("Note: Error closing connection (data was saved successfully):", err instanceof Error ? err.message : String(err));
+            }
         }
     });
 
