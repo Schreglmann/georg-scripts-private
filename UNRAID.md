@@ -1,0 +1,76 @@
+# Unraid Setup Instructions
+
+## Prerequisites
+Install the **User Scripts** plugin from Community Applications in Unraid.
+
+## Setup Steps
+
+### 1. Create Application Directory
+```bash
+mkdir -p /mnt/user/appdata/georg-cli
+```
+
+### 2. Create Environment File
+Create `/mnt/user/appdata/georg-cli/.env`:
+```env
+# Salzburg AG Credentials
+USERNAME=your_username
+PASSWORD=your_password
+DAY_ANLAGE=your_day_anlage
+NIGHT_ANLAGE=your_night_anlage
+GPNR=your_gpnr
+
+# Database Configuration
+DB_HOST=your_db_host
+DB_PORT=5432
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=your_db_name
+```
+
+### 3. Set Up User Script
+1. Open **Settings → User Scripts**
+2. Click **Add New Script**
+3. Name it: `georg-cli-hourly`
+4. Click the gear icon → **Edit Script**
+5. Paste the contents of `unraid-script.sh`
+6. Click **Save Changes**
+7. Set schedule to **Hourly** (or **Custom** with cron: `0 * * * *`)
+
+### 4. Test the Script
+Click **Run Script** to test it manually before enabling the schedule.
+
+## Manual Commands
+
+Run commands manually using Docker:
+```bash
+# Load environment variables
+source /mnt/user/appdata/georg-cli/.env
+
+# Download and import day data directly to database
+docker run --rm \
+  -e USERNAME="$USERNAME" \
+  -e PASSWORD="$PASSWORD" \
+  -e DAY_ANLAGE="$DAY_ANLAGE" \
+  -e NIGHT_ANLAGE="$NIGHT_ANLAGE" \
+  -e GPNR="$GPNR" \
+  -e DB_HOST="$DB_HOST" \
+  -e DB_PORT="$DB_PORT" \
+  -e DB_USER="$DB_USER" \
+  -e DB_PASSWORD="$DB_PASSWORD" \
+  -e DB_NAME="$DB_NAME" \
+  ghcr.io/schreglmann/georg-scripts-private:latest download-salzburg-ag --target day --headless
+```
+
+## How It Works
+
+The `download-salzburg-ag` command:
+1. Logs into the Salzburg AG portal using Selenium
+2. Downloads JSON data from the API
+3. **Inserts data directly into the PostgreSQL database**
+4. No CSV files are created (unless using `--debug` flag)
+
+The `import-salzburg-ag` command is only needed if you have existing CSV files to import.
+
+## Viewing Logs
+Check the User Scripts plugin for execution logs in **Settings → User Scripts → click on the script name**.
