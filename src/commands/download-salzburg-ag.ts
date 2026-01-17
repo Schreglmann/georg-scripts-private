@@ -2,7 +2,7 @@ import axios from "axios";
 import { Command } from "commander";
 import pg from "pg";
 import { Builder, By, Key, until } from "selenium-webdriver";
-import chrome from "selenium-webdriver/chrome";
+import * as chrome from "selenium-webdriver/chrome";
 // eslint-disable-next-line import/no-extraneous-dependencies, @typescript-eslint/no-var-requires
 require("dotenv").config();
 
@@ -80,12 +80,17 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
         };
         let driver;
         if (options.headless) {
+            const options = new chrome.Options().addArguments("--remote-debugging-pipeline").addArguments("--headless").windowSize(screen);
             driver = new Builder()
                 .forBrowser("chrome")
-                .setChromeOptions(new chrome.Options().addArguments("--remote-debugging-pipeline").addArguments("--headless").windowSize(screen))
+                .setChromeOptions(options as any)
                 .build();
         } else {
-            driver = new Builder().forBrowser("chrome").setChromeOptions(new chrome.Options().windowSize(screen)).build();
+            const options = new chrome.Options().windowSize(screen);
+            driver = new Builder()
+                .forBrowser("chrome")
+                .setChromeOptions(options as any)
+                .build();
         }
         const sbgUsername = process.env.SBG_AG_USERNAME;
         const sbgPassword = process.env.SBG_AG_PASSWORD;

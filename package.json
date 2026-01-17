@@ -29,7 +29,7 @@
         "@comet/eslint-config": "5.0.0",
         "@types/cli-progress": "^3.11.5",
         "@types/pg": "^8.11.5",
-        "@types/selenium-webdriver": "^4.1.22",
+        "@types/selenium-webdriver": "^4.35.5",
         "eslint": "^8.54.0",
         "husky": "^8.0.0",
         "lint-staged": "^15.1.0",
@@ -43,6 +43,9 @@
         "lint": "run-p lint:eslint lint:tsc",
         "lint:eslint": "eslint --max-warnings 0 src/",
         "lint:tsc": "tsc"
+    },
+    "engines": {
+        "node": ">=24.0.0"
     },
     "license": "BSD-2-Clause"
 }
