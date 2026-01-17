@@ -128,6 +128,18 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                 } else {
                     console.log(`Preparing Day ${entry.DATE}`);
                 }
+
+                // Delete existing entries for this day if force mode is enabled
+                if (options.force && dayDatesCount.rowCount && dayDatesCount.rowCount > 0) {
+                    console.log(`Deleting existing entries for Day ${entry.DATE}`);
+                    await dbConnection.query(
+                        `DELETE FROM ${
+                            options.target == "day" ? "data_day" : "data_night"
+                        } WHERE date BETWEEN $1::date AND $1::date + '1 day'::interval - '1 second'::interval`,
+                        [entry.DATE],
+                    );
+                }
+
                 const dbQueries = [];
                 for (const data of entry.DAILY_VALUES) {
                     if (!data.PROF_TIME) {
