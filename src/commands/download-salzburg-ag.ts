@@ -9,6 +9,7 @@ require("dotenv").config();
 type InputOptions = {
     target: string;
     headless: boolean;
+    debug?: boolean;
 };
 
 const downloadJson = async (access_token: string, dayOrNight: string) => {
@@ -54,6 +55,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
     .description("Download Salzburg AG Data")
     .option("--target <target>", "day/night")
     .option("--headless", "activate headless mode")
+    .option("--debug", "save response to file")
     .action(async (options: InputOptions) => {
         if (options.target !== "day" && options.target !== "night") {
             console.log("Invalid target");
@@ -91,8 +93,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             await driver.wait(until.elementLocated(By.id("signInName")), 10000);
             await driver.findElement(By.id("signInName")).sendKeys(String(sbgUsername));
             await driver.findElement(By.id("password")).sendKeys(String(sbgPassword), Key.RETURN);
-            console.log("Wait for Cookie Banner to appear (for the login to be finished)");
-            await driver.wait(until.elementLocated(By.id("uc-btn-deny-banner")), 10000);
+            await driver.wait(until.urlContains("/dashboard"), 20000);
 
             // After logging in and any other actions
             console.log("Reading session storage");
@@ -100,6 +101,15 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
 
             // Download JSON
             const jsonResponse = await downloadJson(sessionStorageData.access_token, options.target);
+
+            // Save response to file if debug mode is enabled
+            if (options.debug) {
+                const fs = require("fs");
+                const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+                const filename = `salzburg-ag-${options.target}-${timestamp}.json`;
+                fs.writeFileSync(filename, JSON.stringify(jsonResponse, null, 2));
+                console.log(`Response saved to ${filename}`);
+            }
 
             await dbConnection.connect();
 

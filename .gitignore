@@ -2,3 +2,4 @@ node_modules/
 lib/
 .env
 last-runs.txt
+salzburg-ag-*.json
