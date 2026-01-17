@@ -80,16 +80,23 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
         };
         let driver;
         if (options.headless) {
-            const options = new chrome.Options().addArguments("--remote-debugging-pipeline").addArguments("--headless").windowSize(screen);
+            const chromeOptions = new chrome.Options()
+                .addArguments("--headless")
+                .addArguments("--no-sandbox")
+                .addArguments("--disable-dev-shm-usage")
+                .addArguments("--disable-gpu")
+                .addArguments("--disable-software-rasterizer")
+                .addArguments("--disable-extensions")
+                .windowSize(screen);
             driver = new Builder()
                 .forBrowser("chrome")
-                .setChromeOptions(options as any)
+                .setChromeOptions(chromeOptions as any)
                 .build();
         } else {
-            const options = new chrome.Options().windowSize(screen);
+            const chromeOptions = new chrome.Options().windowSize(screen);
             driver = new Builder()
                 .forBrowser("chrome")
-                .setChromeOptions(options as any)
+                .setChromeOptions(chromeOptions as any)
                 .build();
         }
         const sbgUsername = process.env.SBG_AG_USERNAME;

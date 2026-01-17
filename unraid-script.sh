@@ -18,31 +18,31 @@ docker pull "$IMAGE"
 # Download and import day data directly to database
 echo "Downloading and importing day data..."
 docker run --rm \
-  -e USERNAME="$USERNAME" \
-  -e PASSWORD="$PASSWORD" \
+  -e SBG_AG_USERNAME="$USERNAME" \
+  -e SBG_AG_PASSWORD="$PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \
   -e NIGHT_ANLAGE="$NIGHT_ANLAGE" \
   -e GPNR="$GPNR" \
-  -e DB_HOST="$DB_HOST" \
-  -e DB_PORT="$DB_PORT" \
-  -e DB_USER="$DB_USER" \
-  -e DB_PASSWORD="$DB_PASSWORD" \
-  -e DB_NAME="$DB_NAME" \
+  -e PG_HOST="$DB_HOST" \
+  -e PG_PORT="$DB_PORT" \
+  -e PG_USERNAME="$DB_USER" \
+  -e PG_PASSWORD="$DB_PASSWORD" \
+  -e PG_DATABASE="$DB_NAME" \
   "$IMAGE" download-salzburg-ag --target day --headless
 
 # Download and import night data directly to database
 echo "Downloading and importing night data..."
 docker run --rm \
-  -e USERNAME="$USERNAME" \
-  -e PASSWORD="$PASSWORD" \
+  -e SBG_AG_USERNAME="$USERNAME" \
+  -e SBG_AG_PASSWORD="$PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \
   -e NIGHT_ANLAGE="$NIGHT_ANLAGE" \
   -e GPNR="$GPNR" \
-  -e DB_HOST="$DB_HOST" \
-  -e DB_PORT="$DB_PORT" \
-  -e DB_USER="$DB_USER" \
-  -e DB_PASSWORD="$DB_PASSWORD" \
-  -e DB_NAME="$DB_NAME" \
+  -e PG_HOST="$DB_HOST" \
+  -e PG_PORT="$DB_PORT" \
+  -e PG_USERNAME="$DB_USER" \
+  -e PG_PASSWORD="$DB_PASSWORD" \
+  -e PG_DATABASE="$DB_NAME" \
   "$IMAGE" download-salzburg-ag --target night --headless
 
 echo "$(date): Completed georg-cli tasks"
