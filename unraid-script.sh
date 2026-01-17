@@ -9,6 +9,9 @@ source /mnt/user/appdata/georg-cli/.env
 
 IMAGE="ghcr.io/schreglmann/georg-scripts-private:latest"
 
+# Set default network if not specified
+DOCKER_NETWORK="${DOCKER_NETWORK:-bridge}"
+
 echo "$(date): Starting georg-cli tasks"
 echo "Checking environment variables..."
 if [ -z "$SBG_AG_USERNAME" ]; then
@@ -24,6 +27,7 @@ if [ -z "$PG_HOST" ]; then
     exit 1
 fi
 echo "Environment variables loaded successfully"
+echo "Using Docker network: $DOCKER_NETWORK"
 
 # Pull latest image
 echo "Pulling latest image..."
@@ -31,7 +35,7 @@ docker pull "$IMAGE"
 
 # Download and import day data directly to database
 echo "Downloading and importing day data..."
-docker run --rm --network host \
+docker run --rm --network "$DOCKER_NETWORK" \
   -e SBG_AG_USERNAME="$SBG_AG_USERNAME" \
   -e SBG_AG_PASSWORD="$SBG_AG_PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \
@@ -46,7 +50,7 @@ docker run --rm --network host \
 
 # Download and import night data directly to database
 echo "Downloading and importing night data..."
-docker run --rm --network host \
+docker run --rm --network "$DOCKER_NETWORK" \
   -e SBG_AG_USERNAME="$SBG_AG_USERNAME" \
   -e SBG_AG_PASSWORD="$SBG_AG_PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \

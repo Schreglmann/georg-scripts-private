@@ -26,6 +26,10 @@ PG_PORT=5432
 PG_USERNAME=your_db_user
 PG_PASSWORD=your_db_password
 PG_DATABASE=your_db_name
+
+# Docker Network (use the same custom network as your other containers)
+# Examples: br0, macvlan, or your custom network name
+DOCKER_NETWORK=br0
 ```
 
 ### 3. Set Up User Script
