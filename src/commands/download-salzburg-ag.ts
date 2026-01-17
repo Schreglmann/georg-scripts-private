@@ -10,6 +10,7 @@ type InputOptions = {
     target: string;
     headless: boolean;
     debug?: boolean;
+    force?: boolean;
 };
 
 const downloadJson = async (access_token: string, dayOrNight: string) => {
@@ -56,6 +57,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
     .option("--target <target>", "day/night")
     .option("--headless", "activate headless mode")
     .option("--debug", "save response to file")
+    .option("--force", "override existing database entries")
     .action(async (options: InputOptions) => {
         if (options.target !== "day" && options.target !== "night") {
             console.log("Invalid target");
@@ -120,7 +122,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                     } WHERE date BETWEEN $1::date AND $1::date + '1 day'::interval - '1 second'::interval`,
                     [entry.DATE],
                 );
-                if (dayDatesCount.rowCount == 96) {
+                if (!options.force && dayDatesCount.rowCount == 96) {
                     console.log(`Skipping Day ${entry.DATE}`);
                     continue;
                 } else {
@@ -133,7 +135,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                         continue;
                     }
                     const parsedDate = new Date(Date.parse(`${data.PROF_DATE}T${data.PROF_TIME}`));
-                    if (dayDatesCount.rows.find((row) => Date.parse(row.date) == parsedDate.valueOf())) {
+                    if (!options.force && dayDatesCount.rows.find((row) => Date.parse(row.date) == parsedDate.valueOf())) {
                         console.log(`Skipping ${data.PROF_DATE} ${data.PROF_TIME}`);
                         continue;
                     } else {
