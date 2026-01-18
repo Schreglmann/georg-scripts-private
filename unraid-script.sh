@@ -36,6 +36,7 @@ docker pull "$IMAGE"
 # Download and import day data directly to database
 echo "Downloading and importing day data..."
 DAY_OUTPUT=$(docker run --rm --network "$DOCKER_NETWORK" \
+  -e TZ=Europe/Vienna \
   -e SBG_AG_USERNAME="$SBG_AG_USERNAME" \
   -e SBG_AG_PASSWORD="$SBG_AG_PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \
@@ -54,6 +55,7 @@ echo "$DAY_OUTPUT"
 # Download and import night data directly to database
 echo "Downloading and importing night data..."
 NIGHT_OUTPUT=$(docker run --rm --network "$DOCKER_NETWORK" \
+  -e TZ=Europe/Vienna \
   -e SBG_AG_USERNAME="$SBG_AG_USERNAME" \
   -e SBG_AG_PASSWORD="$SBG_AG_PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \
