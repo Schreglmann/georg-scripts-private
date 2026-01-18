@@ -78,6 +78,9 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             width: 1920,
             height: 1080,
         };
+        let totalSkipped = 0;
+        let totalWritten = 0;
+        const writtenDays: string[] = [];
         let driver;
         if (options.headless) {
             const chromeOptions = new chrome.Options()
@@ -151,6 +154,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                 );
                 if (!options.force && dayDatesCount.rowCount == 96) {
                     console.log(`Skipping Day ${entry.DATE}`);
+                    totalSkipped++;
                     continue;
                 } else {
                     console.log(`Preparing Day ${entry.DATE}`);
@@ -188,15 +192,25 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                 }
                 if (dbQueries.length == 0) {
                     console.log(`No Entries for Day ${entry.DATE}`);
+                    totalSkipped++;
                     continue;
                 }
                 console.log(`Inserting Data for Day ${entry.DATE} to Database`);
                 const allQueries = `${dbQueries.join(";")};`;
                 await dbConnection.query(allQueries);
+                totalWritten++;
+                writtenDays.push(entry.DATE);
             }
         } catch (error) {
             console.error(error);
         } finally {
+            console.log("\n=== Summary ===");
+            console.log(`Total days skipped: ${totalSkipped}`);
+            console.log(`Total days written: ${totalWritten}`);
+            if (writtenDays.length > 0) {
+                console.log(`Days written: ${writtenDays.join(", ")}`);
+            }
+            console.log("===============\n");
             console.log("All Data inserted successfully");
             await driver.quit();
             try {

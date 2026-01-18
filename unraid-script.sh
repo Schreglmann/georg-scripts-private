@@ -35,7 +35,7 @@ docker pull "$IMAGE"
 
 # Download and import day data directly to database
 echo "Downloading and importing day data..."
-docker run --rm --network "$DOCKER_NETWORK" \
+DAY_OUTPUT=$(docker run --rm --network "$DOCKER_NETWORK" \
   -e SBG_AG_USERNAME="$SBG_AG_USERNAME" \
   -e SBG_AG_PASSWORD="$SBG_AG_PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \
@@ -46,11 +46,14 @@ docker run --rm --network "$DOCKER_NETWORK" \
   -e PG_USERNAME="$PG_USERNAME" \
   -e PG_PASSWORD="$PG_PASSWORD" \
   -e PG_DATABASE="$PG_DATABASE" \
-  "$IMAGE" download-salzburg-ag --target day --headless
+  "$IMAGE" download-salzburg-ag --target day --headless 2>&1)
+
+DAY_EXIT_CODE=$?
+echo "$DAY_OUTPUT"
 
 # Download and import night data directly to database
 echo "Downloading and importing night data..."
-docker run --rm --network "$DOCKER_NETWORK" \
+NIGHT_OUTPUT=$(docker run --rm --network "$DOCKER_NETWORK" \
   -e SBG_AG_USERNAME="$SBG_AG_USERNAME" \
   -e SBG_AG_PASSWORD="$SBG_AG_PASSWORD" \
   -e DAY_ANLAGE="$DAY_ANLAGE" \
@@ -61,6 +64,29 @@ docker run --rm --network "$DOCKER_NETWORK" \
   -e PG_USERNAME="$PG_USERNAME" \
   -e PG_PASSWORD="$PG_PASSWORD" \
   -e PG_DATABASE="$PG_DATABASE" \
-  "$IMAGE" download-salzburg-ag --target night --headless
+  "$IMAGE" download-salzburg-ag --target night --headless 2>&1)
+
+NIGHT_EXIT_CODE=$?
+echo "$NIGHT_OUTPUT"
+
+echo ""
+echo "========================================"
+echo "           FINAL SUMMARY"
+echo "========================================"
+echo ""
+echo "DAY DATA SUMMARY:"
+echo "$DAY_OUTPUT" | grep -A 10 "=== Summary ===" | tail -n +2
+if [ $DAY_EXIT_CODE -ne 0 ]; then
+    echo "Day task exited with error code: $DAY_EXIT_CODE"
+fi
+echo ""
+echo "NIGHT DATA SUMMARY:"
+echo "$NIGHT_OUTPUT" | grep -A 10 "=== Summary ===" | tail -n +2
+if [ $NIGHT_EXIT_CODE -ne 0 ]; then
+    echo "Night task exited with error code: $NIGHT_EXIT_CODE"
+fi
+echo ""
+echo "========================================"
+echo ""
 
 echo "$(date): Completed georg-cli tasks"
