@@ -59,6 +59,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
     .option("--debug", "save response to file")
     .option("--force", "override existing database entries")
     .action(async (options: InputOptions) => {
+        const startTime = new Date();
         if (options.target !== "day" && options.target !== "night") {
             console.log("Invalid target");
             return;
@@ -177,12 +178,16 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                         console.log(`Time missing for ${data.PROF_DATE}`);
                         continue;
                     }
+                    if (data.PROF_VALUE === 0) {
+                        console.log(`Skipping ${data.PROF_DATE} ${data.PROF_TIME} (value is 0)`);
+                        continue;
+                    }
                     const parsedDate = new Date(Date.parse(`${data.PROF_DATE}T${data.PROF_TIME}`));
                     if (!options.force && dayDatesCount.rows.find((row) => Date.parse(row.date) == parsedDate.valueOf())) {
                         console.log(`Skipping ${data.PROF_DATE} ${data.PROF_TIME}`);
                         continue;
                     } else {
-                        console.log(`Preparing ${data.PROF_DATE} ${data.PROF_TIME}`);
+                        console.log(`Writing ${data.PROF_DATE} ${data.PROF_TIME} (value: ${data.PROF_VALUE})`);
                         dbQueries.push(
                             `INSERT INTO ${options.target == "day" ? "data_day" : "data_night"} (date, consumption) VALUES (to_timestamp(${
                                 parsedDate.valueOf() / 1000
@@ -204,7 +209,16 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
         } catch (error) {
             console.error(error);
         } finally {
+            const endTime = new Date();
+            const durationMs = endTime.getTime() - startTime.getTime();
+            const durationSeconds = Math.floor(durationMs / 1000);
+            const minutes = Math.floor(durationSeconds / 60);
+            const seconds = durationSeconds % 60;
+
             console.log("\n=== Summary ===");
+            console.log(`Start time: ${startTime.toLocaleString()}`);
+            console.log(`End time: ${endTime.toLocaleString()}`);
+            console.log(`Duration: ${minutes}m ${seconds}s`);
             console.log(`Total days skipped: ${totalSkipped}`);
             console.log(`Total days written: ${totalWritten}`);
             if (writtenDays.length > 0) {
