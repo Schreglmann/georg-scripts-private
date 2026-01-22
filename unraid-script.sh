@@ -4,6 +4,13 @@
 #
 # This script runs the georg-cli container to download and import Salzburg AG data directly to database
 
+# ============================================
+# CONFIGURATION FLAGS
+# ============================================
+# Set FORCE_MODE to true to override existing database entries
+FORCE_MODE=false
+# ============================================
+
 # Load environment variables
 source /mnt/user/appdata/georg-cli/.env
 
@@ -11,6 +18,13 @@ IMAGE="ghcr.io/schreglmann/georg-scripts-private:latest"
 
 # Set default network if not specified
 DOCKER_NETWORK="${DOCKER_NETWORK:-bridge}"
+
+# Build force flag parameter
+FORCE_FLAG=""
+if [ "$FORCE_MODE" = true ]; then
+    FORCE_FLAG="--force"
+    echo "FORCE MODE ENABLED: Will override existing database entries"
+fi
 
 echo "$(date): Starting georg-cli tasks"
 echo "Checking environment variables..."
@@ -47,7 +61,7 @@ DAY_OUTPUT=$(docker run --rm --network "$DOCKER_NETWORK" \
   -e PG_USERNAME="$PG_USERNAME" \
   -e PG_PASSWORD="$PG_PASSWORD" \
   -e PG_DATABASE="$PG_DATABASE" \
-  "$IMAGE" download-salzburg-ag --target day --headless 2>&1)
+  "$IMAGE" download-salzburg-ag --target day --headless $FORCE_FLAG 2>&1)
 
 DAY_EXIT_CODE=$?
 echo "$DAY_OUTPUT"
@@ -66,7 +80,7 @@ NIGHT_OUTPUT=$(docker run --rm --network "$DOCKER_NETWORK" \
   -e PG_USERNAME="$PG_USERNAME" \
   -e PG_PASSWORD="$PG_PASSWORD" \
   -e PG_DATABASE="$PG_DATABASE" \
-  "$IMAGE" download-salzburg-ag --target night --headless 2>&1)
+  "$IMAGE" download-salzburg-ag --target night --headless $FORCE_FLAG 2>&1)
 
 NIGHT_EXIT_CODE=$?
 echo "$NIGHT_OUTPUT"

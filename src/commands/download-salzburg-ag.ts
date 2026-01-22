@@ -147,13 +147,20 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
             await dbConnection.connect();
 
             for (const entry of jsonResponse) {
-                const dayDatesCount = await dbConnection.query(
-                    `SELECT date FROM ${
+                const dayDatesResult = await dbConnection.query(
+                    `SELECT date, consumption FROM ${
                         options.target == "day" ? "data_day" : "data_night"
                     } WHERE date BETWEEN $1::date AND $1::date + '1 day'::interval - '1 second'::interval`,
                     [entry.DATE],
                 );
-                if (!options.force && dayDatesCount.rowCount == 96) {
+
+                // Create a map for quick lookup: timestamp -> consumption value
+                const existingDataMap = new Map<number, number>();
+                for (const row of dayDatesResult.rows) {
+                    existingDataMap.set(Date.parse(row.date), parseFloat(row.consumption));
+                }
+
+                if (!options.force && dayDatesResult.rowCount == 96) {
                     console.log(`Skipping Day ${entry.DATE}`);
                     totalSkipped++;
                     continue;
@@ -162,7 +169,7 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                 }
 
                 // Delete existing entries for this day if force mode is enabled
-                if (options.force && dayDatesCount.rowCount && dayDatesCount.rowCount > 0) {
+                if (options.force && dayDatesResult.rowCount && dayDatesResult.rowCount > 0) {
                     console.log(`Deleting existing entries for Day ${entry.DATE}`);
                     await dbConnection.query(
                         `DELETE FROM ${
@@ -173,27 +180,35 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                 }
 
                 const dbQueries = [];
+                const deleteQueries = [];
                 for (const data of entry.DAILY_VALUES) {
                     if (!data.PROF_TIME) {
                         console.log(`Time missing for ${data.PROF_DATE}`);
                         continue;
                     }
-                    if (data.PROF_VALUE === 0) {
-                        console.log(`Skipping ${data.PROF_DATE} ${data.PROF_TIME} (value is 0)`);
-                        continue;
-                    }
                     const parsedDate = new Date(Date.parse(`${data.PROF_DATE}T${data.PROF_TIME}`));
-                    if (!options.force && dayDatesCount.rows.find((row) => Date.parse(row.date) == parsedDate.valueOf())) {
-                        console.log(`Skipping ${data.PROF_DATE} ${data.PROF_TIME}`);
-                        continue;
-                    } else {
-                        console.log(`Writing ${data.PROF_DATE} ${data.PROF_TIME} (value: ${data.PROF_VALUE})`);
-                        dbQueries.push(
-                            `INSERT INTO ${options.target == "day" ? "data_day" : "data_night"} (date, consumption) VALUES (to_timestamp(${
-                                parsedDate.valueOf() / 1000
-                            }), ${data.PROF_VALUE})`,
-                        );
+                    const timestamp = parsedDate.valueOf();
+                    const existingValue = existingDataMap.get(timestamp);
+
+                    if (!options.force && existingValue !== undefined) {
+                        // Check if existing value is 0 and new value is not 0
+                        if (existingValue === 0 && data.PROF_VALUE !== 0) {
+                            console.log(`Overriding zero value ${data.PROF_DATE} ${data.PROF_TIME} (old: 0, new: ${data.PROF_VALUE})`);
+                            deleteQueries.push(
+                                `DELETE FROM ${options.target == "day" ? "data_day" : "data_night"} WHERE date = to_timestamp(${timestamp / 1000})`,
+                            );
+                        } else {
+                            console.log(`Skipping ${data.PROF_DATE} ${data.PROF_TIME} (already exists with value: ${existingValue})`);
+                            continue;
+                        }
                     }
+
+                    console.log(`Writing ${data.PROF_DATE} ${data.PROF_TIME} (value: ${data.PROF_VALUE})`);
+                    dbQueries.push(
+                        `INSERT INTO ${options.target == "day" ? "data_day" : "data_night"} (date, consumption) VALUES (to_timestamp(${
+                            timestamp / 1000
+                        }), ${data.PROF_VALUE})`,
+                    );
                 }
                 if (dbQueries.length == 0) {
                     console.log(`No Entries for Day ${entry.DATE}`);
@@ -201,6 +216,12 @@ const downloadSalzburgAg = new Command("download-salzburg-ag")
                     continue;
                 }
                 console.log(`Inserting Data for Day ${entry.DATE} to Database`);
+                // First delete zero values that need to be overridden
+                if (deleteQueries.length > 0) {
+                    const allDeleteQueries = `${deleteQueries.join(";")};`;
+                    await dbConnection.query(allDeleteQueries);
+                }
+                // Then insert new values
                 const allQueries = `${dbQueries.join(";")};`;
                 await dbConnection.query(allQueries);
                 totalWritten++;
